@@ -4,6 +4,7 @@ import { HTTPFacilitatorClient, type RoutesConfig } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { fileURLToPath } from "node:url";
 import { basename, dirname, join } from "node:path";
+import { parseUnits } from "viem";
 import { loadConfig, missingLiveConfig, type RuntimeConfig } from "./config.js";
 import { getBalances, runProcurementAgent, settleSupplier } from "./agent.js";
 
@@ -11,7 +12,19 @@ export function createApp(config: RuntimeConfig = loadConfig()) {
   const app = express();
   app.use(express.json({ limit: "64kb" }));
 
-  const facilitator = new HTTPFacilitatorClient({ url: config.facilitatorUrl });
+  const x402ApiKey = config.x402ApiKey;
+  const facilitator = new HTTPFacilitatorClient(
+    x402ApiKey
+      ? {
+          url: config.facilitatorUrl,
+          createAuthHeaders: async () => ({
+            verify: { "X-API-Key": x402ApiKey },
+            settle: { "X-API-Key": x402ApiKey },
+            supported: { "X-API-Key": x402ApiKey },
+          }),
+        }
+      : { url: config.facilitatorUrl },
+  );
   const resourceServer = new x402ResourceServer(facilitator).register(
     config.network,
     new ExactEvmScheme(),
@@ -24,17 +37,34 @@ export function createApp(config: RuntimeConfig = loadConfig()) {
         accepts: {
           scheme: "exact",
           price: {
-            amount: service.price.replace("$", ""),
+            amount: parseUnits(service.price.replace("$", ""), 6).toString(),
             asset: config.usdcAddress,
           },
           network: config.network,
           payTo: service.payTo,
+          extra: {
+            name: "USDC",
+            version: "2",
+          },
         },
         description: `KudiFlow ${name} procurement signal`,
       };
     }
   }
-  app.use(paymentMiddleware(paidRoutes, resourceServer, undefined, undefined, false));
+  if (Object.keys(paidRoutes).length > 0) {
+    let resourceServerReady: Promise<void> | undefined;
+    app.use("/api/signals", async (_req, _res, next) => {
+      try {
+        resourceServerReady ??= resourceServer.initialize();
+        await resourceServerReady;
+        next();
+      } catch (error) {
+        resourceServerReady = undefined;
+        next(error);
+      }
+    });
+    app.use(paymentMiddleware(paidRoutes, resourceServer, undefined, undefined, false));
+  }
 
   app.get("/api/health", async (_req, res) => {
     const missing = missingLiveConfig(config);

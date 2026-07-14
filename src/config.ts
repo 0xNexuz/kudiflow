@@ -27,7 +27,8 @@ const envSchema = z.object({
   CELO_NETWORK: trimmedString.pipe(z.literal("celo-mainnet")).default("celo-mainnet"),
   AGENT_PRIVATE_KEY: hexPrivateKey.optional(),
   AGENT_WALLET_ADDRESS: address.optional(),
-  X402_FACILITATOR_URL: urlString.default("https://x402.celo.org"),
+  X402_FACILITATOR_URL: urlString.default("https://api.x402.celo.org"),
+  X402_API_KEY: trimmedString.optional(),
   X402_STOCK_SERVICE_URL: urlString.optional(),
   X402_DELIVERY_SERVICE_URL: urlString.optional(),
   X402_RISK_SERVICE_URL: urlString.optional(),
@@ -68,6 +69,7 @@ export function loadConfig(env = process.env) {
     rpcUrl: parsed.CELO_RPC_URL,
     network: CELO_CAIP2_NETWORK as Network,
     facilitatorUrl: parsed.X402_FACILITATOR_URL,
+    x402ApiKey: parsed.X402_API_KEY,
     account,
     agentAddress: derivedAddress ?? configuredAddress,
     usdcAddress: CELO_USDC_ADDRESS,
@@ -101,6 +103,7 @@ export function missingLiveConfig(config: RuntimeConfig): string[] {
   if (!config.supplierAddress) missing.push("SUPPLIER_ADDRESS");
   if (!config.feeRecipient) missing.push("KUDIFLOW_FEE_RECIPIENT");
   if (!config.attributionTag) missing.push("CELO_BUILDERS_ATTRIBUTION_TAG");
+  if (!config.x402ApiKey) missing.push("X402_API_KEY");
   for (const [name, service] of Object.entries(config.signalServices)) {
     if (!service.url) missing.push(`X402_${name.toUpperCase()}_SERVICE_URL`);
     if (!service.payTo) missing.push(`X402_${name.toUpperCase()}_PAYTO`);
