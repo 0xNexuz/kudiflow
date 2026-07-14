@@ -43,12 +43,4 @@ Keep `.env.local` private. The generated agent/deployer wallet is server-side
 only and should be narrowly funded with Celo mainnet CELO for gas and USDC for
 x402/provider/supplier payments.
 
-## Hackathon status
 
-The official live event record sets the deadline to **August 3, 2026 at 09:00
-UTC**. An older July 20 date remains in stale event copy. The project must deploy
-on Celo mainnet, use a public GitHub repository, publish an ERC-8004 identity,
-and tag direct agent transactions with the ERC-8021 tag assigned at registration.
-
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the technical design and
-[`docs/SUBMISSION.md`](docs/SUBMISSION.md) for the verified checklist.
