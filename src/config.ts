@@ -11,33 +11,33 @@ import type { Network } from "@x402/core/types";
 
 loadDotenv({ path: [".env.local", ".env"], quiet: true });
 
-const trimmedString = z.preprocess(
-  (value) => (typeof value === "string" ? value.trim() : value),
-  z.string(),
-);
+const trimInput = (value: unknown) =>
+  typeof value === "string" ? value.trim() : value;
+const trimmedString = z.preprocess(trimInput, z.string());
+const urlString = z.preprocess(trimInput, z.string().url());
 const address = trimmedString.refine(isAddress, "Expected an EVM address");
-const hexPrivateKey = z
-  .preprocess((value) => (typeof value === "string" ? value.trim() : value), z.string())
-  .regex(/^0x[0-9a-fA-F]{64}$/, "Expected a 32-byte private key");
+const hexPrivateKey = z.preprocess(
+  trimInput,
+  z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Expected a 32-byte private key"),
+);
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4173),
-  CELO_RPC_URL: trimmedString.url().default(DEFAULT_CELO_RPC_URL),
+  CELO_RPC_URL: urlString.default(DEFAULT_CELO_RPC_URL),
   CELO_NETWORK: trimmedString.pipe(z.literal("celo-mainnet")).default("celo-mainnet"),
   AGENT_PRIVATE_KEY: hexPrivateKey.optional(),
   AGENT_WALLET_ADDRESS: address.optional(),
-  X402_FACILITATOR_URL: trimmedString.url().default("https://x402.celo.org"),
-  X402_STOCK_SERVICE_URL: trimmedString.url().optional(),
-  X402_DELIVERY_SERVICE_URL: trimmedString.url().optional(),
-  X402_RISK_SERVICE_URL: trimmedString.url().optional(),
+  X402_FACILITATOR_URL: urlString.default("https://x402.celo.org"),
+  X402_STOCK_SERVICE_URL: urlString.optional(),
+  X402_DELIVERY_SERVICE_URL: urlString.optional(),
+  X402_RISK_SERVICE_URL: urlString.optional(),
   X402_STOCK_PAYTO: address.optional(),
   X402_DELIVERY_PAYTO: address.optional(),
   X402_RISK_PAYTO: address.optional(),
   SUPPLIER_ADDRESS: address.optional(),
   KUDIFLOW_FEE_RECIPIENT: address.optional(),
   CELO_BUILDERS_ATTRIBUTION_TAG: z
-    .preprocess((value) => (typeof value === "string" ? value.trim() : value), z.string())
-    .regex(/^[a-z0-9_]{1,32}$/)
+    .preprocess(trimInput, z.string().regex(/^[a-z0-9_]{1,32}$/))
     .optional(),
 });
 
