@@ -96,7 +96,7 @@ app.innerHTML = `
             <span class="choice-no">02</span>
             <h3>Select the Best Valid Offer</h3>
             <p>The agent pays for live signals, rejects suppliers below your trust floor, then explains the winning landed cost.</p>
-            <div class="tag-row"><span>3 x402 calls</span><span>trust >= 80</span><span>83.69 USDC</span></div>
+            <div class="tag-row"><span>3 x402 calls</span><span>trust >= 80</span><span>0.01 USDC pilot</span></div>
           </article>
         </div>
         <button class="navy-action start-demo" type="button"><span>Run this buying brief</span><b>-></b></button>

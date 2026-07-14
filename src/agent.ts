@@ -102,7 +102,7 @@ export async function runProcurementAgent(config: RuntimeConfig): Promise<AgentR
   return {
     status: "ready-for-approval",
     supplier: config.supplierAddress,
-    settlementAmountUsdc: "83.69",
+    settlementAmountUsdc: "0.01",
     budgetSavedNgn: "52800",
     receipts,
   };
@@ -113,7 +113,7 @@ export async function settleSupplier(config: RuntimeConfig): Promise<Receipt> {
   if (!config.supplierAddress) throw new Error("SUPPLIER_ADDRESS is required");
   if (!config.attributionTag) throw new Error("CELO_BUILDERS_ATTRIBUTION_TAG is required");
 
-  const amount = parseUnits("83.69", 6);
+  const amount = parseUnits("0.01", 6);
   const policy: SpendPolicy = {
     token: config.usdcAddress,
     maxPerAction: parseUnits("100", 6),
@@ -156,7 +156,7 @@ export async function settleSupplier(config: RuntimeConfig): Promise<Receipt> {
 
   return {
     name: "supplier settlement",
-    amount: "$83.69",
+    amount: "$0.01",
     network: config.network,
     transaction: hash,
   };

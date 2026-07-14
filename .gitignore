@@ -8,3 +8,5 @@ work/
 coverage/
 *.log
 .DS_Store
+
+.vercel
