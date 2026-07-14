@@ -24,6 +24,14 @@
   ],
   "x402Support": true,
   "active": true,
-  "registrations": [],
+  "registrations": [
+    {
+      "agentId": 9677,
+      "agentAddress": "0x2b47A78f5396B5F89340bdC00c2517966e4f19a8",
+      "chainId": 42220,
+      "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "transactionHash": "0x90a3a2747f0ecdf0e42dba3db0f9c8155981a117c5c3d997b348c558ce3b0d3a"
+    }
+  ],
   "supportedTrust": ["reputation"]
 }
