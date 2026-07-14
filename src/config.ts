@@ -11,28 +11,32 @@ import type { Network } from "@x402/core/types";
 
 loadDotenv({ path: [".env.local", ".env"], quiet: true });
 
-const address = z.string().refine(isAddress, "Expected an EVM address");
+const trimmedString = z.preprocess(
+  (value) => (typeof value === "string" ? value.trim() : value),
+  z.string(),
+);
+const address = trimmedString.refine(isAddress, "Expected an EVM address");
 const hexPrivateKey = z
-  .string()
+  .preprocess((value) => (typeof value === "string" ? value.trim() : value), z.string())
   .regex(/^0x[0-9a-fA-F]{64}$/, "Expected a 32-byte private key");
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4173),
-  CELO_RPC_URL: z.string().url().default(DEFAULT_CELO_RPC_URL),
-  CELO_NETWORK: z.literal("celo-mainnet").default("celo-mainnet"),
+  CELO_RPC_URL: trimmedString.url().default(DEFAULT_CELO_RPC_URL),
+  CELO_NETWORK: trimmedString.pipe(z.literal("celo-mainnet")).default("celo-mainnet"),
   AGENT_PRIVATE_KEY: hexPrivateKey.optional(),
   AGENT_WALLET_ADDRESS: address.optional(),
-  X402_FACILITATOR_URL: z.string().url().default("https://x402.celo.org"),
-  X402_STOCK_SERVICE_URL: z.string().url().optional(),
-  X402_DELIVERY_SERVICE_URL: z.string().url().optional(),
-  X402_RISK_SERVICE_URL: z.string().url().optional(),
+  X402_FACILITATOR_URL: trimmedString.url().default("https://x402.celo.org"),
+  X402_STOCK_SERVICE_URL: trimmedString.url().optional(),
+  X402_DELIVERY_SERVICE_URL: trimmedString.url().optional(),
+  X402_RISK_SERVICE_URL: trimmedString.url().optional(),
   X402_STOCK_PAYTO: address.optional(),
   X402_DELIVERY_PAYTO: address.optional(),
   X402_RISK_PAYTO: address.optional(),
   SUPPLIER_ADDRESS: address.optional(),
   KUDIFLOW_FEE_RECIPIENT: address.optional(),
   CELO_BUILDERS_ATTRIBUTION_TAG: z
-    .string()
+    .preprocess((value) => (typeof value === "string" ? value.trim() : value), z.string())
     .regex(/^[a-z0-9_]{1,32}$/)
     .optional(),
 });
