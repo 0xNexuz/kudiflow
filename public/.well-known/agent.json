@@ -2,15 +2,15 @@
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "KudiFlow",
   "description": "Policy-controlled procurement agent on Celo. KudiFlow pays for x402 stock, delivery, and risk signals, enforces merchant spend policy, and settles verified suppliers with tagged USDC receipts.",
-  "image": "https://https-celoplatform-notion-site-agen.vercel.app/assets/kudiflow-hero.png",
+  "image": "https://kudiflow-agent.vercel.app/assets/kudiflow-hero.png",
   "services": [
     {
       "name": "web",
-      "endpoint": "https://https-celoplatform-notion-site-agen.vercel.app"
+      "endpoint": "https://kudiflow-agent.vercel.app"
     },
     {
       "name": "A2A",
-      "endpoint": "https://https-celoplatform-notion-site-agen.vercel.app/api/runs",
+      "endpoint": "https://kudiflow-agent.vercel.app/api/runs",
       "version": "0.1.0"
     },
     {
