@@ -1,0 +1,105 @@
+import { config as loadDotenv } from "dotenv";
+import { getAddress, isAddress, type Address, type Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { z } from "zod";
+import {
+  CELO_CAIP2_NETWORK,
+  CELO_USDC_ADDRESS,
+  DEFAULT_CELO_RPC_URL,
+} from "./chain.js";
+import type { Network } from "@x402/core/types";
+
+loadDotenv({ path: [".env.local", ".env"], quiet: true });
+
+const address = z.string().refine(isAddress, "Expected an EVM address");
+const hexPrivateKey = z
+  .string()
+  .regex(/^0x[0-9a-fA-F]{64}$/, "Expected a 32-byte private key");
+
+const envSchema = z.object({
+  PORT: z.coerce.number().int().positive().default(4173),
+  CELO_RPC_URL: z.string().url().default(DEFAULT_CELO_RPC_URL),
+  CELO_NETWORK: z.literal("celo-mainnet").default("celo-mainnet"),
+  AGENT_PRIVATE_KEY: hexPrivateKey.optional(),
+  AGENT_WALLET_ADDRESS: address.optional(),
+  X402_FACILITATOR_URL: z.string().url().default("https://x402.celo.org"),
+  X402_STOCK_SERVICE_URL: z.string().url().optional(),
+  X402_DELIVERY_SERVICE_URL: z.string().url().optional(),
+  X402_RISK_SERVICE_URL: z.string().url().optional(),
+  X402_STOCK_PAYTO: address.optional(),
+  X402_DELIVERY_PAYTO: address.optional(),
+  X402_RISK_PAYTO: address.optional(),
+  SUPPLIER_ADDRESS: address.optional(),
+  KUDIFLOW_FEE_RECIPIENT: address.optional(),
+  CELO_BUILDERS_ATTRIBUTION_TAG: z
+    .string()
+    .regex(/^[a-z0-9_]{1,32}$/)
+    .optional(),
+});
+
+export type RuntimeConfig = ReturnType<typeof loadConfig>;
+
+function normalizeAddress(value: string | undefined): Address | undefined {
+  return value ? (getAddress(value) as Address) : undefined;
+}
+
+export function loadConfig(env = process.env) {
+  const parsed = envSchema.parse(env);
+  const account = parsed.AGENT_PRIVATE_KEY
+    ? privateKeyToAccount(parsed.AGENT_PRIVATE_KEY as Hex)
+    : undefined;
+  const configuredAddress = normalizeAddress(parsed.AGENT_WALLET_ADDRESS);
+  const derivedAddress = account?.address;
+
+  if (
+    configuredAddress &&
+    derivedAddress &&
+    configuredAddress.toLowerCase() !== derivedAddress.toLowerCase()
+  ) {
+    throw new Error("AGENT_WALLET_ADDRESS does not match AGENT_PRIVATE_KEY");
+  }
+
+  return {
+    port: parsed.PORT,
+    rpcUrl: parsed.CELO_RPC_URL,
+    network: CELO_CAIP2_NETWORK as Network,
+    facilitatorUrl: parsed.X402_FACILITATOR_URL,
+    account,
+    agentAddress: derivedAddress ?? configuredAddress,
+    usdcAddress: CELO_USDC_ADDRESS,
+    attributionTag: parsed.CELO_BUILDERS_ATTRIBUTION_TAG,
+    supplierAddress: normalizeAddress(parsed.SUPPLIER_ADDRESS),
+    feeRecipient: normalizeAddress(parsed.KUDIFLOW_FEE_RECIPIENT),
+    signalServices: {
+      stock: {
+        url: parsed.X402_STOCK_SERVICE_URL,
+        payTo: normalizeAddress(parsed.X402_STOCK_PAYTO),
+        price: "$0.003",
+      },
+      delivery: {
+        url: parsed.X402_DELIVERY_SERVICE_URL,
+        payTo: normalizeAddress(parsed.X402_DELIVERY_PAYTO),
+        price: "$0.002",
+      },
+      risk: {
+        url: parsed.X402_RISK_SERVICE_URL,
+        payTo: normalizeAddress(parsed.X402_RISK_PAYTO),
+        price: "$0.004",
+      },
+    },
+  };
+}
+
+export function missingLiveConfig(config: RuntimeConfig): string[] {
+  const missing: string[] = [];
+  if (!config.account) missing.push("AGENT_PRIVATE_KEY");
+  if (!config.agentAddress) missing.push("AGENT_WALLET_ADDRESS");
+  if (!config.supplierAddress) missing.push("SUPPLIER_ADDRESS");
+  if (!config.feeRecipient) missing.push("KUDIFLOW_FEE_RECIPIENT");
+  if (!config.attributionTag) missing.push("CELO_BUILDERS_ATTRIBUTION_TAG");
+  for (const [name, service] of Object.entries(config.signalServices)) {
+    if (!service.url) missing.push(`X402_${name.toUpperCase()}_SERVICE_URL`);
+    if (!service.payTo) missing.push(`X402_${name.toUpperCase()}_PAYTO`);
+  }
+  return missing;
+}

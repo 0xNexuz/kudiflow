@@ -1,0 +1,42 @@
+{
+  "name": "kudiflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Policy-controlled procurement and FX agent for Celo",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "server:dev": "tsx src/server.ts",
+    "serve": "npm run app:build && tsx src/server.ts",
+    "app:build": "vite build",
+    "preview": "vite preview",
+    "clean": "node --eval \"import('node:fs/promises').then(fs => fs.rm('dist', { recursive: true, force: true }))\"",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/**/*.test.ts",
+    "check": "npm run typecheck && npm test && npm run build && npm run app:build"
+  },
+  "dependencies": {
+    "@celo/attribution-tags": "^0.3.0",
+    "@x402/core": "^2.18.0",
+    "@x402/evm": "^2.18.0",
+    "@x402/express": "^2.18.0",
+    "@x402/fetch": "^2.18.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "viem": "^2.55.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.0.0",
+    "@types/supertest": "^7.2.0",
+    "supertest": "^7.2.2",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.0.0"
+  }
+}
