@@ -1,0 +1,27 @@
+{
+  "type": "Agent",
+  "name": "KudiFlow",
+  "description": "Policy-controlled procurement agent on Celo. KudiFlow pays for x402 stock, delivery, and risk signals, enforces merchant spend policy, and settles verified suppliers with tagged USDC receipts.",
+  "image": "https://https-celoplatform-notion-site-agen.vercel.app/assets/kudiflow-hero.png",
+  "endpoints": [
+    {
+      "type": "a2a",
+      "url": "https://https-celoplatform-notion-site-agen.vercel.app/api/runs"
+    },
+    {
+      "type": "wallet",
+      "address": "0x2b47A78f5396B5F89340bdC00c2517966e4f19a8",
+      "chainId": 42220
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/0xNexuz/kudiflow"
+    }
+  ],
+  "supportedTrust": ["reputation"],
+  "x402": {
+    "facilitator": "https://x402.celo.org",
+    "network": "eip155:42220"
+  },
+  "attributionTag": "celo_2e4520403c6b"
+}
