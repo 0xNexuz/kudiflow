@@ -80,7 +80,14 @@ export interface AgentRunResult {
 
 export async function getBalances(config: RuntimeConfig) {
   if (!config.agentAddress) return null;
-  const client = createPublicClient({ chain: celo, transport: http(config.rpcUrl) });
+  const client = createPublicClient({
+    chain: celo,
+    transport: http(config.rpcUrl, {
+      retryCount: 5,
+      retryDelay: 1_000,
+      timeout: 20_000,
+    }),
+  });
   const [celoWei, usdcUnits] = await Promise.all([
     client.getBalance({ address: config.agentAddress }),
     client.readContract({

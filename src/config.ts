@@ -20,6 +20,12 @@ const hexPrivateKey = z.preprocess(
   trimInput,
   z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Expected a 32-byte private key"),
 );
+const usdcPrice = z.preprocess(
+  trimInput,
+  z.string()
+    .regex(/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/, "Expected a positive USDC amount with at most 6 decimals")
+    .refine((value) => Number(value) > 0, "Expected a positive USDC amount"),
+);
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4173),
@@ -32,6 +38,9 @@ const envSchema = z.object({
   X402_STOCK_SERVICE_URL: urlString.optional(),
   X402_DELIVERY_SERVICE_URL: urlString.optional(),
   X402_RISK_SERVICE_URL: urlString.optional(),
+  X402_STOCK_PRICE_USDC: usdcPrice.default("0.0009"),
+  X402_DELIVERY_PRICE_USDC: usdcPrice.default("0.002"),
+  X402_RISK_PRICE_USDC: usdcPrice.default("0.004"),
   X402_STOCK_PAYTO: address.optional(),
   X402_DELIVERY_PAYTO: address.optional(),
   X402_RISK_PAYTO: address.optional(),
@@ -80,17 +89,17 @@ export function loadConfig(env = process.env) {
       stock: {
         url: parsed.X402_STOCK_SERVICE_URL,
         payTo: normalizeAddress(parsed.X402_STOCK_PAYTO),
-        price: "$0.003",
+        price: `$${parsed.X402_STOCK_PRICE_USDC}`,
       },
       delivery: {
         url: parsed.X402_DELIVERY_SERVICE_URL,
         payTo: normalizeAddress(parsed.X402_DELIVERY_PAYTO),
-        price: "$0.002",
+        price: `$${parsed.X402_DELIVERY_PRICE_USDC}`,
       },
       risk: {
         url: parsed.X402_RISK_SERVICE_URL,
         payTo: normalizeAddress(parsed.X402_RISK_PAYTO),
-        price: "$0.004",
+        price: `$${parsed.X402_RISK_PRICE_USDC}`,
       },
     },
   };

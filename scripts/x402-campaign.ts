@@ -101,6 +101,22 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function withRetry<T>(label: string, action: () => Promise<T>, attempts = 4): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await action();
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts) break;
+      const delayMs = Math.min(1_000 * 2 ** (attempt - 1), 8_000);
+      console.warn(`${label} failed (${attempt}/${attempts}); retrying in ${delayMs}ms: ${errorWithCause(error)}`);
+      await sleep(delayMs);
+    }
+  }
+  throw lastError;
+}
+
 function errorWithCause(error: unknown): string {
   if (!(error instanceof Error)) return "Unknown error";
   const cause = error.cause instanceof Error ? ` (${error.cause.message})` : "";
@@ -114,7 +130,10 @@ async function preflightSignalServices(config: ReturnType<typeof loadConfig>, si
   for (const [name, service] of entries) {
     if (!service.url) throw new Error(`${name} service URL is missing`);
     try {
-      const response = await fetch(service.url, { method: "GET" });
+      const response = await withRetry(
+        `${name} signal preflight`,
+        () => fetch(service.url!, { method: "GET", signal: AbortSignal.timeout(20_000) }),
+      );
       if (response.status !== 402 && response.status !== 200) {
         throw new Error(`${name} signal preflight returned HTTP ${response.status}`);
       }
@@ -132,13 +151,13 @@ function usage(): string {
 KudiFlow x402 campaign runner
 
 Dry-run target math:
-  npm run campaign:x402 -- --current-count 18 --target-count 604 --max-usdc 2
+  npm run campaign:x402 -- --current-count 209 --target-count 2000 --max-usdc 1.7
 
 Execute real x402 payments:
-  npm run campaign:x402 -- --current-count 18 --target-count 604 --max-usdc 2 --execute
+  npm run campaign:x402 -- --current-count 209 --target-count 2000 --max-usdc 1.7 --execute
 
 Direct run count:
-  npm run campaign:x402 -- --runs 586 --max-usdc 2 --execute
+  npm run campaign:x402 -- --runs 1791 --max-usdc 1.7 --execute
 
 Use every signal in each run, only if all routes are healthy:
   npm run campaign:x402 -- --signal all --current-count 18 --target-count 604 --max-usdc 2 --execute
@@ -165,9 +184,9 @@ async function main(): Promise<void> {
     : signalPriceUsdc(config.signalServices[args.signal].price);
   const runs = args.runs ?? Math.ceil(((args.targetCount ?? 0) - (args.currentCount ?? 0)) / signalsPerRun);
   const plannedPayments = runs * signalsPerRun;
-  const estimatedCost = runs * costPerRun;
+  const estimatedCost = Number((runs * costPerRun).toFixed(6));
 
-  const balances = await getBalances(config);
+  const balances = await withRetry("Celo balance check", () => getBalances(config));
   const balanceUsdc = balances?.usdc ?? 0;
   await preflightSignalServices(config, args.signal);
 
