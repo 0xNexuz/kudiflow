@@ -58,6 +58,23 @@ track (ten $50 awards) after the core economic loop is live.
 - Aigora profile/feedback URLs if entering that track.
 - Review the draft, then explicitly publish it before the deadline.
 
+## KudiFlow final links
+
+- Public GitHub repository: https://github.com/0xNexuz/kudiflow
+- Live app: https://kudiflow-agent.vercel.app
+- ERC-8004 agent identity: https://8004scan.io/agents/celo/9677
+- Public X/Twitter submission post: https://x.com/magnuskrypt/status/2077012019505418666
+- Agent/payTo wallet: `0x2b47A78f5396B5F89340bdC00c2517966e4f19a8`
+- Supplier settlement recipient used for pilot settlement: `0x7034aF41397893321c4458ABB3B98F6c67065FaB`
+- Celo Builders attribution tag: `celo_2e4520403c6b`
+
+### Live payment evidence
+
+- Stock x402 signal: https://celoscan.io/tx/0x0debfac3368a8a51770ee91ad13ac35213072dd0504a7988a8edf10209240c4b
+- Delivery x402 signal: https://celoscan.io/tx/0x10a9dae54e777c09a264da5074bad263c576ee904dd70b07e106a91e93d8237d
+- Risk x402 signal: https://celoscan.io/tx/0xbd4d9b2941e2866c8481ac29baaf5f458c7d6dadd573d8859ea03043cfffd701
+- Supplier settlement, 0.01 USDC: https://celoscan.io/tx/0xdf91748015fbd6b3b36139bb77ab415d6b626e074e4b440a9e3901fd6248d09c
+
 ## Demo acceptance path
 
 1. A merchant requests ten solar lamps under ₦180,000.
