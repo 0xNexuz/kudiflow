@@ -93,6 +93,29 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function errorWithCause(error: unknown): string {
+  if (!(error instanceof Error)) return "Unknown error";
+  const cause = error.cause instanceof Error ? ` (${error.cause.message})` : "";
+  return `${error.message}${cause}`;
+}
+
+async function preflightSignalServices(config: ReturnType<typeof loadConfig>): Promise<void> {
+  for (const [name, service] of Object.entries(config.signalServices)) {
+    if (!service.url) throw new Error(`${name} service URL is missing`);
+    try {
+      const response = await fetch(service.url, { method: "GET" });
+      if (response.status !== 402 && response.status !== 200) {
+        throw new Error(`${name} signal preflight returned HTTP ${response.status}`);
+      }
+    } catch (error) {
+      const hint = service.url.includes("localhost")
+        ? " Start the local server in another PowerShell with: npm run serve"
+        : "";
+      throw new Error(`${name} signal service is unreachable at ${service.url}: ${errorWithCause(error)}.${hint}`);
+    }
+  }
+}
+
 function usage(): string {
   return `
 KudiFlow x402 campaign runner
@@ -132,6 +155,7 @@ async function main(): Promise<void> {
 
   const balances = await getBalances(config);
   const balanceUsdc = balances?.usdc ?? 0;
+  await preflightSignalServices(config);
 
   const summary = {
     mode: args.execute ? "execute" : "dry-run",
@@ -199,7 +223,7 @@ async function main(): Promise<void> {
       await appendFile(logPath, `${JSON.stringify(logEntry)}\n`);
       console.log(`run ${runIndex}/${runs}: ${result.receipts.length} x402 receipts, total ${successfulPayments}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
+      const message = errorWithCause(error);
       await appendFile(logPath, `${JSON.stringify({ runIndex, startedAt, error: message })}\n`);
       throw new Error(`Campaign stopped on run ${runIndex}: ${message}`);
     }
@@ -217,7 +241,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  console.error(errorWithCause(error));
   console.error(usage());
   process.exitCode = 1;
 });
