@@ -17,6 +17,8 @@ The repository currently contains:
 - A deterministic transaction authorization gate with tests, plus an in-app
   policy ledger showing whether each action is allowed, approval-gated, or
   blocked before signing.
+- Merchant-facing allow/block controls in the policy ledger. A merchant block
+  closes the approval path and prevents supplier settlement from being sent.
 - Celo mainnet configuration through viem.
 - x402 v2 server/client wiring for paid stock, delivery, and risk signals.
 - Clickable CeloScan transaction hashes for x402 signal payments and supplier
@@ -42,10 +44,15 @@ configured.
 3. Buy stock, delivery, and supplier-risk signals through live x402 payments.
 4. Read the resulting signal receipts and supplier trust score.
 5. Block unsafe flows, request approval for gated flows, or prepare settlement.
-6. Send a tagged Celo USDC settlement only after the merchant approves.
+6. Let the merchant explicitly allow or block the proposed order after the
+   policy ledger is visible.
+7. Send a tagged Celo USDC settlement only after the merchant approves.
 
 Policy is not prompt-only. The policy engine in `src/policy.ts` evaluates each
-spend intent before a transaction can be signed.
+spend intent before a transaction can be signed. The agent is autonomous inside
+those bounds: it discovers suppliers, purchases allowed x402 signals and
+prepares the winning order without manual steering, while merchant policy and
+the final approval/block control remain the authority for settlement.
 
 ## Run locally
 

@@ -57,8 +57,10 @@ const stages = [
 
 let running = false;
 let awaitingApproval = false;
+let merchantBlocked = false;
 let lastConfig: ApiConfig | null = null;
 let lastRun: RunResult | null = null;
+const merchantPolicyChoices = new Map<number, "allow" | "block">();
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App root not found");
@@ -66,7 +68,14 @@ if (!app) throw new Error("App root not found");
 app.innerHTML = `
   <div class="site-shell">
     <header class="masthead" id="top">
-      <a class="micro-logo" href="#top"><span>KF</span><small>KudiFlow<br/>Commerce Co.</small></a>
+      <a class="micro-logo" href="#top" aria-label="KudiFlow home">
+        <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="29" />
+          <path d="M21 45V19M21 33l18-14M28 31l17 14" />
+          <path class="logo-accent" d="M43 18v28" />
+        </svg>
+        <small>KudiFlow<br/>Commerce Co.</small>
+      </a>
       <p>Agentic procurement for growing merchants - built on Celo</p>
       <a class="mast-link" href="#demo">Run the agent -></a>
     </header>
@@ -133,6 +142,7 @@ app.innerHTML = `
         <p class="section-note">Live build</p>
         <h2 class="script-title">Watch KudiFlow Take the Brief</h2>
         <p class="demo-intro" id="readiness-copy">Checking live Celo and x402 readiness...</p>
+        <p class="autonomy-note">Agent autonomy: KudiFlow discovers suppliers, buys allowed signal data and prepares the best valid order by itself. Merchant policy can still block spend before signing, and settlement requires explicit approval.</p>
 
         <div class="brief-slip">
           <div class="request-box">
@@ -152,7 +162,7 @@ app.innerHTML = `
         <div class="policy-desk">
           <div class="policy-head">
             <small>Merchant policy</small>
-            <strong>Deterministic guardrails before the agent signs.</strong>
+            <strong>Policy auto-decides. Merchant can still allow or block.</strong>
           </div>
           <label>Max x402 signal spend <input id="policy-max-signal" type="number" min="0" step="0.001" value="0.005" /></label>
           <label>Max supplier settlement <input id="policy-max-settlement" type="number" min="0" step="0.001" value="0.01" /></label>
@@ -168,7 +178,10 @@ app.innerHTML = `
           <div class="approval-slip" id="approval-slip" hidden>
             <span>Approval required</span>
             <p id="approval-copy">KudiFlow is ready to settle the selected supplier on Celo mainnet.</p>
-            <button id="approve-payment" type="button">Approve settlement</button>
+            <div class="approval-actions">
+              <button id="block-payment" class="danger" type="button">Block order</button>
+              <button id="approve-payment" type="button">Approve settlement</button>
+            </div>
           </div>
           <div class="console-bottom">
             <div><span id="count-metric">0</span><small>x402 payments</small></div>
@@ -200,7 +213,14 @@ app.innerHTML = `
           <article><span>02</span><h4>Pay for Intelligence</h4><p>Purchase stock, delivery and risk signals as genuine pay-per-request x402 services.</p><a href="https://docs.celo.org/build-on-celo/build-with-ai/x402" target="_blank">Payment layer -></a></article>
           <article><span>03</span><h4>Settle with Proof</h4><p>Settle the supplier and attribute direct activity with ERC-8021.</p><a href="https://github.com/celo-org/attribution-tags" target="_blank">Receipt layer -></a></article>
         </div>
-        <div class="monogram-lockup"><span>KF</span><strong>KudiFlow</strong><small>Policy-Controlled Procurement on Celo</small></div>
+        <div class="monogram-lockup">
+          <svg class="logo-mark large" viewBox="0 0 64 64" aria-hidden="true">
+            <circle cx="32" cy="32" r="29" />
+            <path d="M21 45V19M21 33l18-14M28 31l17 14" />
+            <path class="logo-accent" d="M43 18v28" />
+          </svg>
+          <strong>KudiFlow</strong><small>Policy-Controlled Procurement on Celo</small>
+        </div>
       </section>
 
       <section class="closing-section">
@@ -273,15 +293,55 @@ function renderPolicyLedger(decisions: PolicyDecisionLog[]): void {
     list.innerHTML = '<p class="empty-receipt">Policy decisions will appear before any tx is sent.</p>';
     return;
   }
-  list.innerHTML = decisions.map((decision) => `
-    <article class="policy-row ${decision.status}">
+  list.innerHTML = decisions.map((decision, index) => {
+    const choice = merchantPolicyChoices.get(index);
+    const choiceLabel = choice === "allow" ? "Merchant allowed" : choice === "block" ? "Merchant blocked" : "";
+    return `
+    <article class="policy-row ${decision.status} ${choice ? `merchant-${choice}` : ""}">
       <span>${decision.status.toUpperCase()}</span>
       <div>
         <strong>${escapeHtml(decision.action)} · ${escapeHtml(decision.amount)}</strong>
         <small>${escapeHtml(decision.reason)} · ${shortAddress(decision.recipient)}</small>
+        ${choiceLabel ? `<em>${choiceLabel}</em>` : ""}
+      </div>
+      <div class="policy-actions" aria-label="Merchant policy choice">
+        <button type="button" data-policy-choice="${index}" data-choice="allow">Allow</button>
+        <button type="button" data-policy-choice="${index}" data-choice="block">Block</button>
       </div>
     </article>
-  `).join("");
+  `;
+  }).join("");
+  list.querySelectorAll<HTMLButtonElement>("[data-policy-choice]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.policyChoice ?? "-1");
+      const choice = button.dataset.choice === "block" ? "block" : "allow";
+      setMerchantPolicyChoice(index, choice);
+    });
+  });
+}
+
+function setMerchantPolicyChoice(index: number, choice: "allow" | "block"): void {
+  if (!lastRun?.policyDecisions[index]) return;
+  merchantPolicyChoices.set(index, choice);
+  merchantBlocked = Array.from(merchantPolicyChoices.values()).includes("block");
+  if (merchantBlocked) {
+    awaitingApproval = false;
+    const slip = document.querySelector<HTMLDivElement>("#approval-slip");
+    if (slip) slip.hidden = true;
+    setStage("settle", "blocked");
+    setText("#console-state", "MERCHANT BLOCKED");
+    setText("#readiness-copy", `Merchant blocked "${lastRun.policyDecisions[index].action}". No supplier settlement will be sent unless the order is rerun with updated policy.`);
+  } else if (lastRun.status === "ready-for-approval") {
+    awaitingApproval = true;
+    const slip = document.querySelector<HTMLDivElement>("#approval-slip");
+    if (slip) slip.hidden = false;
+    setStage("settle", "approval");
+    setText("#console-state", "MERCHANT APPROVAL NEEDED");
+    setText("#readiness-copy", "Merchant allowed the visible policy decisions. Settlement still requires explicit approval.");
+  } else {
+    setText("#console-state", "POLICY REVIEWED");
+  }
+  renderPolicyLedger(lastRun.policyDecisions);
 }
 
 async function loadReadiness(): Promise<void> {
@@ -308,6 +368,8 @@ async function loadReadiness(): Promise<void> {
 async function runAgent(): Promise<void> {
   if (running || awaitingApproval || !lastConfig?.live) return;
   running = true;
+  merchantBlocked = false;
+  merchantPolicyChoices.clear();
   renderPolicyLedger([]);
   setText("#console-state", "AGENT RUNNING");
   setStage("policy", "active");
@@ -354,6 +416,12 @@ async function runAgent(): Promise<void> {
 
 async function approvePayment(): Promise<void> {
   if (!awaitingApproval || running) return;
+  if (merchantBlocked) {
+    setStage("settle", "blocked");
+    setText("#console-state", "MERCHANT BLOCKED");
+    setText("#readiness-copy", "Merchant blocked the order. No supplier settlement was sent.");
+    return;
+  }
   running = true;
   awaitingApproval = false;
   document.querySelector<HTMLDivElement>("#approval-slip")!.hidden = true;
@@ -379,10 +447,23 @@ async function approvePayment(): Promise<void> {
   }
 }
 
+function blockPayment(): void {
+  if (!awaitingApproval || running) return;
+  merchantBlocked = true;
+  awaitingApproval = false;
+  const slip = document.querySelector<HTMLDivElement>("#approval-slip");
+  if (slip) slip.hidden = true;
+  setStage("settle", "blocked");
+  setText("#console-state", "MERCHANT BLOCKED");
+  setText("#readiness-copy", "Merchant blocked the settlement. No supplier transaction was sent.");
+}
+
 function resetDemo(): void {
   for (const stage of stages) stage.state = "waiting";
   running = false;
   awaitingApproval = false;
+  merchantBlocked = false;
+  merchantPolicyChoices.clear();
   lastRun = null;
   renderStages();
   setText("#console-state", "CHECKING");
@@ -468,6 +549,7 @@ function escapeHtml(value: string): string {
 
 document.querySelector("#run-agent")?.addEventListener("click", () => void runAgent());
 document.querySelector("#approve-payment")?.addEventListener("click", () => void approvePayment());
+document.querySelector("#block-payment")?.addEventListener("click", blockPayment);
 document.querySelector("#reset-demo")?.addEventListener("click", resetDemo);
 document.querySelector("#request-preset")?.addEventListener("change", (event) => {
   setPreset((event.target as HTMLSelectElement).value);
