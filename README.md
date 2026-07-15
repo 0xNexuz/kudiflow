@@ -74,6 +74,12 @@ product collages, navy rules, and a persistent capsule navigation dock.
 npm run check
 ```
 
+## Documentation
+
+- [Build documentation](docs/BUILD.md)
+- [Architecture notes](docs/ARCHITECTURE.md)
+- [Submission evidence](docs/SUBMISSION.md)
+
 Keep `.env.local` private. The generated agent/deployer wallet is server-side
 only and should be narrowly funded with Celo mainnet CELO for gas and USDC for
 x402/provider/supplier payments.
