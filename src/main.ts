@@ -86,7 +86,7 @@ app.innerHTML = `
         <h1 aria-label="KudiFlow"><span>KUDI</span><span>FLOW</span></h1>
         <p class="hero-kicker">Autonomous buying. Bound by your policy.</p>
         <div class="hero-frame">
-          <img src="/assets/kudiflow-hero.png" alt="Three merchants, procurement goods and a retro computer" />
+          <img src="/assets/kudiflow-hero.webp" alt="Three merchants, procurement goods and a retro computer" fetchpriority="high" decoding="async" />
         </div>
         <p class="edition-line">A procurement agent for the merchants who keep cities moving</p>
       </section>
@@ -100,7 +100,7 @@ app.innerHTML = `
           <p>Your agent discovers verified supplier services, pays only for the data it needs, rejects risky offers, converts the exact settlement amount, and keeps every Celo receipt. It works quickly, but never outside the limits you set.</p>
         </div>
         <div class="policy-art">
-          <img src="/assets/policy-device.png" alt="A hand holding a retro policy control device" />
+          <img src="/assets/policy-device.webp" alt="A hand holding a retro policy control device" loading="lazy" decoding="async" />
           <div class="policy-caption">
             <span>Policy no. 001</span>
             <strong>The merchant stays in control.</strong>
@@ -113,7 +113,7 @@ app.innerHTML = `
         <p class="section-note">The buying flow</p>
         <h2 class="script-title">One Brief, Many Trusted Suppliers</h2>
         <div class="rule short"></div>
-        <img class="catalog-art" src="/assets/supplier-catalog.png" alt="Merchants beside a catalog of solar lantern options" />
+        <img class="catalog-art" src="/assets/supplier-catalog.webp" alt="Merchants beside a catalog of solar lantern options" loading="lazy" decoding="async" />
         <div class="choice-grid">
           <article>
             <span class="choice-no">01</span>
@@ -134,7 +134,7 @@ app.innerHTML = `
 
       <section class="portrait-section">
         <div class="portrait-heading"><span>Trust Before</span><span>Transfer</span></div>
-        <img src="/assets/trust-portrait.png" alt="Confident merchant wearing green sunglasses" />
+        <img src="/assets/trust-portrait.webp" alt="Confident merchant wearing green sunglasses" loading="lazy" decoding="async" />
         <p>EVERY SUPPLIER IS IDENTITY-CHECKED - EVERY DECISION IS POLICY-CHECKED - EVERY PAYMENT LEAVES A RECEIPT</p>
       </section>
 
@@ -207,7 +207,7 @@ app.innerHTML = `
         <h2 class="script-title">The World of Buying Agents</h2>
         <div class="rule short"></div>
         <p class="economy-copy">KudiFlow is more than a chatbot. It is a bounded economic actor: trusted identity, paid information, deterministic authorization and transparent settlement, composed into one merchant workflow.</p>
-        <img class="economy-art" src="/assets/agent-economy.png" alt="A small service robot connecting a market, supplier and delivery scooter" />
+        <img class="economy-art" src="/assets/agent-economy.webp" alt="A small service robot connecting a market, supplier and delivery scooter" loading="lazy" decoding="async" />
         <div class="feature-heading"><h3>Featured Capabilities</h3><span>See the architecture</span></div>
         <div class="feature-grid">
           <article><span>01</span><h4>Discover & Verify</h4><p>Find supplier agents through ERC-8004 identity and filter reputation before spending.</p><a href="https://docs.celo.org/build-on-celo/build-with-ai/8004" target="_blank">Identity layer -></a></article>
@@ -231,7 +231,7 @@ app.innerHTML = `
           <p>From one merchant brief to one verified receipt book.</p>
           <button class="navy-action start-demo" type="button"><span>Run the agent</span><b>-></b></button>
         </div>
-        <img src="/assets/settlement-table.png" alt="Hands exchanging a solar lamp and procurement receipt" />
+        <img src="/assets/settlement-table.webp" alt="Hands exchanging a solar lamp and procurement receipt" loading="lazy" decoding="async" />
       </section>
     </main>
 
