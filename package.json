@@ -11,6 +11,7 @@
     "dev": "vite",
     "server:dev": "tsx src/server.ts",
     "serve": "npm run app:build && tsx src/server.ts",
+    "campaign:x402": "tsx scripts/x402-campaign.ts",
     "app:build": "vite build",
     "preview": "vite preview",
     "clean": "node --eval \"import('node:fs/promises').then(fs => fs.rm('dist', { recursive: true, force: true }))\"",
