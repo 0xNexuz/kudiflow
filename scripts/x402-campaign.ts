@@ -123,6 +123,24 @@ function errorWithCause(error: unknown): string {
   return `${error.message}${cause}`;
 }
 
+async function retryRejectedPayment<T>(action: () => Promise<T>, attempts = 5): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await action();
+    } catch (error) {
+      lastError = error;
+      const message = errorWithCause(error);
+      const rejectedWithoutReceipt = message.includes("returned HTTP 402");
+      if (!rejectedWithoutReceipt || attempt === attempts) break;
+      const delayMs = Math.min(attempt * 5_000, 20_000);
+      console.warn(`x402 settlement rejected (${attempt}/${attempts}); retrying in ${delayMs}ms`);
+      await sleep(delayMs);
+    }
+  }
+  throw lastError;
+}
+
 async function preflightSignalServices(config: ReturnType<typeof loadConfig>, signal: SignalServiceName | "all"): Promise<void> {
   const entries = signal === "all"
     ? Object.entries(config.signalServices)
@@ -229,7 +247,7 @@ async function main(): Promise<void> {
     const scenario = scenarios[(runIndex - 1) % scenarios.length];
     const startedAt = new Date().toISOString();
     try {
-      const receipts = args.signal === "all"
+      const receipts = await retryRejectedPayment(async () => args.signal === "all"
         ? (await runProcurementAgent(config, {
             merchantRequest: `${scenario} Campaign run ${runIndex}/${runs}.`,
             settlementAmountUsdc: "0.01",
@@ -242,7 +260,7 @@ async function main(): Promise<void> {
               allowSignalProviders: true,
             },
           })).receipts
-        : [await buySignal(config, args.signal)];
+        : [await buySignal(config, args.signal)]);
       successfulPayments += receipts.length;
       const logEntry = {
         runIndex,
