@@ -99,6 +99,8 @@ export async function getBalances(config: RuntimeConfig) {
 const defaultMerchantRequest =
   "Restock 10 solar lamps under NGN 180,000 before Friday. Never pay an unverified supplier.";
 
+export type SignalServiceName = "stock" | "delivery" | "risk";
+
 function parseUsdc(value: string | undefined, fallback: string): bigint {
   return parseUnits(value && value.trim() ? value : fallback, 6);
 }
@@ -128,6 +130,46 @@ function proofTransaction(proof: unknown): Hash | undefined {
     return proof.transaction as Hash;
   }
   return undefined;
+}
+
+async function responseDetail(response: Response): Promise<string> {
+  const text = await response.text().catch(() => "");
+  return text ? `: ${text.slice(0, 500)}` : "";
+}
+
+export async function buySignal(
+  config: RuntimeConfig,
+  name: SignalServiceName,
+): Promise<Receipt> {
+  if (!config.account) throw new Error("AGENT_PRIVATE_KEY is required");
+  const service = config.signalServices[name];
+  if (!service.url) throw new Error(`${name} service URL is required`);
+  if (!service.payTo) throw new Error(`${name} service payTo is required`);
+
+  const paymentFetch = wrapFetchWithPaymentFromConfig(fetch, {
+    schemes: [
+      {
+        network: config.network,
+        client: new ExactEvmScheme(config.account),
+      },
+    ],
+  });
+
+  const response = await paymentFetch(service.url, { method: "GET" });
+  if (!response.ok) {
+    throw new Error(`${name} service returned HTTP ${response.status}${await responseDetail(response)}`);
+  }
+  const proofHeader = response.headers.get("PAYMENT-RESPONSE");
+  const proof = proofHeader ? decodePaymentResponseHeader(proofHeader) : await response.json();
+  const receipt: Receipt = {
+    name: `${name} signal`,
+    amount: service.price,
+    network: config.network,
+    proof,
+  };
+  const transaction = proofTransaction(proof);
+  if (transaction) receipt.transaction = transaction;
+  return receipt;
 }
 
 export async function runProcurementAgent(
@@ -203,7 +245,7 @@ export async function runProcurementAgent(
     }
     const response = await paymentFetch(service.url, { method: "GET" });
     if (!response.ok) {
-      throw new Error(`${name} service returned HTTP ${response.status}`);
+      throw new Error(`${name} service returned HTTP ${response.status}${await responseDetail(response)}`);
     }
     const proofHeader = response.headers.get("PAYMENT-RESPONSE");
     const proof = proofHeader ? decodePaymentResponseHeader(proofHeader) : await response.json();
