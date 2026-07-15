@@ -116,7 +116,7 @@ export function createApp(config: RuntimeConfig = loadConfig()) {
     const missing = missingLiveConfig(config);
     if (missing.length > 0) return res.status(409).json({ error: "live_config_missing", missing });
     try {
-      res.json(await settleSupplier(config, req.body?.policy));
+      res.json(await settleSupplier(config, req.body?.policy, req.body?.amountUsdc));
     } catch (error) {
       res.status(502).json({ error: "settlement_failed", message: errorMessage(error) });
     }

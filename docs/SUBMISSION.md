@@ -28,6 +28,19 @@ Verified against the live Celo Builders event record on July 14, 2026.
 - Add the agent/payTo wallet in the submission.
 - Do not mirror facilitator settlements with artificial tagged transfers.
 
+### Most Revenue Generated — operating plan
+
+- Volume comes from direct Celo mainnet transactions sent by the agent with the
+  assigned ERC-8021 attribution tag.
+- For KudiFlow, the legitimate volume source is supplier settlement: the
+  merchant sets a real settlement amount, the policy gate previews it, and the
+  agent only sends the tagged USDC transfer after approval.
+- Keep settlement volume tied to real procurement scenarios and funded orders;
+  do not create fake mirror transactions for x402 activity.
+- Before increasing volume, fund the agent wallet with enough USDC and CELO for
+  the chosen settlement amount plus gas, then set the in-app settlement amount
+  and max policy cap to the intended spend.
+
 KudiFlow can also enter the Askbots rating track ($500) and the Aigora feedback
 track (ten $50 awards) after the core economic loop is live.
 

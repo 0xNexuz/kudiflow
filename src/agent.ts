@@ -54,6 +54,7 @@ export interface MerchantPolicyInput {
 
 export interface AgentRunInput {
   merchantRequest?: string;
+  settlementAmountUsdc?: string;
   policy?: MerchantPolicyInput;
 }
 
@@ -102,6 +103,16 @@ function parseUsdc(value: string | undefined, fallback: string): bigint {
   return parseUnits(value && value.trim() ? value : fallback, 6);
 }
 
+function formatUsdc(amount: bigint): string {
+  const whole = amount / 1_000_000n;
+  const fractional = (amount % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+  return fractional ? `${whole}.${fractional}` : whole.toString();
+}
+
+function settlementAmountFromInput(input?: string): bigint {
+  return parseUsdc(input, "0.01");
+}
+
 function decisionReason(decision: ReturnType<typeof evaluateSpend>): string {
   return decision.status === "allow" ? "Within merchant policy" : decision.reason;
 }
@@ -125,6 +136,8 @@ export async function runProcurementAgent(
 ): Promise<AgentRunResult> {
   if (!config.account) throw new Error("AGENT_PRIVATE_KEY is required");
   if (!config.supplierAddress) throw new Error("SUPPLIER_ADDRESS is required");
+  const settlementAmount = settlementAmountFromInput(input.settlementAmountUsdc);
+  const settlementAmountUsdc = formatUsdc(settlementAmount);
 
   const paymentFetch = wrapFetchWithPaymentFromConfig(fetch, {
     schemes: [
@@ -180,7 +193,7 @@ export async function runProcurementAgent(
         status: "blocked",
         merchantRequest: input.merchantRequest ?? defaultMerchantRequest,
         supplier: config.supplierAddress,
-        settlementAmountUsdc: "0.01",
+        settlementAmountUsdc,
         budgetSavedNgn: "0",
         receipts,
         policyDecisions,
@@ -213,7 +226,7 @@ export async function runProcurementAgent(
       status: "blocked",
       merchantRequest: input.merchantRequest ?? defaultMerchantRequest,
       supplier: config.supplierAddress,
-      settlementAmountUsdc: "0.01",
+      settlementAmountUsdc,
       budgetSavedNgn: "0",
       receipts,
       policyDecisions,
@@ -226,7 +239,7 @@ export async function runProcurementAgent(
       status: "blocked",
       merchantRequest: input.merchantRequest ?? defaultMerchantRequest,
       supplier: config.supplierAddress,
-      settlementAmountUsdc: "0.01",
+      settlementAmountUsdc,
       budgetSavedNgn: "0",
       receipts,
       policyDecisions,
@@ -235,11 +248,52 @@ export async function runProcurementAgent(
     };
   }
 
+  const settlementPolicy: SpendPolicy = {
+    token: config.usdcAddress,
+    maxPerAction: parseUsdc(input.policy?.maxSettlementUsdc, "100"),
+    maxPerRun: parseUnits("150", 6),
+    approvalThreshold: parseUsdc(input.policy?.approvalThresholdUsdc, "50"),
+    maxSlippageBps: 100,
+    allowedRecipients: [config.supplierAddress],
+  };
+  const settlementDecision = evaluateSpend(
+    settlementPolicy,
+    {
+      id: "supplier-settlement-preview",
+      kind: "supplier-payment",
+      token: config.usdcAddress,
+      recipient: config.supplierAddress,
+      amount: settlementAmount,
+      rationale: "Preview selected supplier settlement before merchant approval",
+    },
+    0n,
+  );
+  policyDecisions.push({
+    action: "supplier settlement",
+    status: settlementDecision.status,
+    reason: decisionReason(settlementDecision),
+    amount: `$${settlementAmountUsdc}`,
+    recipient: config.supplierAddress,
+  });
+  if (settlementDecision.status === "deny") {
+    return {
+      status: "blocked",
+      merchantRequest: input.merchantRequest ?? defaultMerchantRequest,
+      supplier: config.supplierAddress,
+      settlementAmountUsdc,
+      budgetSavedNgn: "0",
+      receipts,
+      policyDecisions,
+      autonomousActions: ["Bought market signals", "Read ERC-8004 reputation", "Blocked settlement outside merchant policy"],
+      blockReason: settlementDecision.reason,
+    };
+  }
+
   return {
     status: "ready-for-approval",
     merchantRequest: input.merchantRequest ?? defaultMerchantRequest,
     supplier: config.supplierAddress,
-    settlementAmountUsdc: "0.01",
+    settlementAmountUsdc,
     budgetSavedNgn: "52800",
     receipts,
     policyDecisions,
@@ -256,12 +310,13 @@ export async function runProcurementAgent(
 export async function settleSupplier(
   config: RuntimeConfig,
   policyInput: MerchantPolicyInput = {},
+  requestedAmountUsdc?: string,
 ): Promise<Receipt> {
   if (!config.account) throw new Error("AGENT_PRIVATE_KEY is required");
   if (!config.supplierAddress) throw new Error("SUPPLIER_ADDRESS is required");
   if (!config.attributionTag) throw new Error("CELO_BUILDERS_ATTRIBUTION_TAG is required");
 
-  const amount = parseUnits("0.01", 6);
+  const amount = settlementAmountFromInput(requestedAmountUsdc);
   const policy: SpendPolicy = {
     token: config.usdcAddress,
     maxPerAction: parseUsdc(policyInput.maxSettlementUsdc, "100"),
@@ -304,7 +359,7 @@ export async function settleSupplier(
 
   return {
     name: "supplier settlement",
-    amount: "$0.01",
+    amount: `$${formatUsdc(amount)}`,
     network: config.network,
     transaction: hash,
   };

@@ -165,7 +165,8 @@ app.innerHTML = `
             <strong>Policy auto-decides. Merchant can still allow or block.</strong>
           </div>
           <label>Max x402 signal spend <input id="policy-max-signal" type="number" min="0" step="0.001" value="0.005" /></label>
-          <label>Max supplier settlement <input id="policy-max-settlement" type="number" min="0" step="0.001" value="0.01" /></label>
+          <label>Settlement amount <input id="settlement-amount" type="number" min="0" step="0.01" value="0.01" /></label>
+          <label>Max supplier settlement <input id="policy-max-settlement" type="number" min="0" step="0.01" value="1.00" /></label>
           <label>Approval threshold <input id="policy-approval-threshold" type="number" min="0" step="0.001" value="0.005" /></label>
           <label>Minimum trust score <input id="policy-min-reputation" type="number" min="0" max="100" step="1" value="80" /></label>
           <label class="check-policy"><input id="policy-require-verified" type="checkbox" checked /> Require verified supplier</label>
@@ -320,6 +321,12 @@ function renderPolicyLedger(decisions: PolicyDecisionLog[]): void {
   });
 }
 
+interface AgentRunPayload {
+  merchantRequest: string;
+  settlementAmountUsdc: string;
+  policy: MerchantPolicyInput;
+}
+
 function setMerchantPolicyChoice(index: number, choice: "allow" | "block"): void {
   if (!lastRun?.policyDecisions[index]) return;
   merchantPolicyChoices.set(index, choice);
@@ -431,7 +438,7 @@ async function approvePayment(): Promise<void> {
     const response = await fetch("/api/settle", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ policy: readPolicyInput() }),
+      body: JSON.stringify({ policy: readPolicyInput(), amountUsdc: lastRun?.settlementAmountUsdc }),
     });
     if (!response.ok) throw await apiError(response);
     const receipt = await response.json() as Receipt;
@@ -482,10 +489,11 @@ function jumpToDemo(): void {
   document.querySelector("#demo")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function buildAgentPayload(): { merchantRequest: string; policy: MerchantPolicyInput } {
+function buildAgentPayload(): AgentRunPayload {
   const request = document.querySelector<HTMLTextAreaElement>("#merchant-request")?.value.trim();
   return {
     merchantRequest: request || "Restock 10 solar lamps under NGN 180,000 before Friday. Never pay an unverified supplier.",
+    settlementAmountUsdc: inputValue("#settlement-amount", "0.01"),
     policy: readPolicyInput(),
   };
 }
@@ -493,7 +501,7 @@ function buildAgentPayload(): { merchantRequest: string; policy: MerchantPolicyI
 function readPolicyInput(): MerchantPolicyInput {
   return {
     maxSignalSpendUsdc: inputValue("#policy-max-signal", "0.005"),
-    maxSettlementUsdc: inputValue("#policy-max-settlement", "0.01"),
+    maxSettlementUsdc: inputValue("#policy-max-settlement", "1.00"),
     approvalThresholdUsdc: inputValue("#policy-approval-threshold", "0.005"),
     minReputation: Number(inputValue("#policy-min-reputation", "80")),
     requireVerifiedSupplier: document.querySelector<HTMLInputElement>("#policy-require-verified")?.checked ?? true,
