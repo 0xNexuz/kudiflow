@@ -23,7 +23,7 @@ body::before {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
   mix-blend-mode: multiply;
 }
-button, input { font: inherit; }
+button, input, textarea, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 img { display: block; max-width: 100%; }
@@ -103,8 +103,39 @@ a { color: inherit; }
 .brief-slip small, .brief-slip strong { display: block; }
 .brief-slip small { margin-bottom: 7px; text-transform: uppercase; letter-spacing: .12em; font: 8px "DM Mono", monospace; color: var(--coral); }
 .brief-slip strong { font: 400 18px/1.35 "Libre Caslon Display", serif; }
+.request-box select,
+.request-box textarea,
+.policy-desk input {
+  width: 100%;
+  border: 1px solid rgba(37,59,104,.42);
+  background: rgba(255,255,255,.28);
+  color: var(--ink);
+}
+.request-box select { margin-bottom: 10px; padding: 8px 10px; text-transform: uppercase; letter-spacing: .08em; font: 8px "DM Mono", monospace; }
+.request-box textarea { resize: vertical; min-height: 82px; padding: 12px; font: 400 18px/1.35 "Libre Caslon Display", serif; }
 .brief-slip button { min-width: 105px; padding: 12px 15px; border: 0; border-radius: 999px; background: var(--navy); color: white; display: flex; justify-content: space-between; font: 9px "DM Mono", monospace; text-transform: uppercase; }
 .brief-slip button:disabled { opacity: .55; }
+.policy-desk {
+  margin-top: 14px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 1.2fr repeat(3, 1fr);
+  gap: 14px;
+  align-items: end;
+  border: 1px solid var(--rule);
+  background: rgba(245,240,228,.45);
+}
+.policy-head small,
+.policy-desk label {
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font: 8px "DM Mono", monospace;
+  color: var(--coral);
+}
+.policy-head strong { display: block; margin-top: 6px; color: var(--navy); font: 400 24px/1 "Libre Caslon Display", serif; }
+.policy-desk input { margin-top: 7px; padding: 9px; }
+.policy-desk .check-policy { align-self: center; display: flex; gap: 8px; align-items: center; color: var(--navy); }
+.policy-desk .check-policy input { width: auto; margin: 0; }
 .agent-console { margin-top: 24px; border: 1px solid var(--navy); background: #20375e; color: #f4efdf; box-shadow: 8px 8px 0 rgba(37,59,104,.09); }
 .console-top { padding: 12px 17px; display: flex; justify-content: space-between; background: #152844; border-bottom: 1px solid #54718b; font: 8px "DM Mono", monospace; letter-spacing: .12em; }
 .stage-list { display: grid; grid-template-columns: repeat(5, 1fr); }
@@ -142,8 +173,20 @@ a { color: inherit; }
 .receipt strong, .receipt small { display: block; }
 .receipt strong { font: 400 15px "Libre Caslon Display", serif; }
 .receipt small { margin-top: 5px; color: var(--muted); font: 6px "DM Mono", monospace; }
+.tx-link { display: inline-block; margin-top: 7px; color: var(--coral); text-transform: uppercase; letter-spacing: .08em; font: 7px "DM Mono", monospace; text-underline-offset: 3px; }
 .receipt > b { font: 9px "DM Mono", monospace; }
 .receipt.settlement { background: #dbe4cf; }
+.policy-ledger { margin-top: 34px; }
+.receipts-heading > span { text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font: 8px "DM Mono", monospace; }
+.policy-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; border: 1px solid var(--rule); background: var(--rule); }
+.policy-row { min-height: 96px; padding: 16px; display: grid; grid-template-columns: 78px 1fr; gap: 13px; align-items: center; background: var(--paper-light); }
+.policy-row > span { padding: 8px 9px; text-align: center; border: 1px solid var(--navy); border-radius: 999px; font: 7px "DM Mono", monospace; }
+.policy-row strong, .policy-row small { display: block; }
+.policy-row strong { font: 400 16px "Libre Caslon Display", serif; }
+.policy-row small { margin-top: 6px; color: var(--muted); font: 7px/1.45 "DM Mono", monospace; }
+.policy-row.allow > span { color: #2f6d58; border-color: #2f6d58; }
+.policy-row.approval-required > span { color: var(--coral); border-color: var(--coral); }
+.policy-row.deny { background: #f0d1c4; }
 
 .economy-section { padding-top: 150px; }
 .economy-copy { max-width: 650px; margin: 30px auto 0; text-align: center; color: var(--muted); font: 14px/1.7 "Libre Caslon Display", serif; }
@@ -214,9 +257,11 @@ a { color: inherit; }
   .portrait-section img { aspect-ratio: 4 / 4.8; object-position: center; }
   .brief-slip { grid-template-columns: 1fr; }
   .brief-slip button { width: 100%; }
+  .policy-desk { grid-template-columns: 1fr; }
   .approval-slip { grid-template-columns: 1fr; }
   .console-bottom span { font-size: 22px; }
   .receipt-list { grid-template-columns: 1fr; }
+  .policy-list { grid-template-columns: 1fr; }
   .feature-heading { margin-top: -30px; }
   .feature-grid { grid-template-columns: 1fr; }
   .feature-grid article { min-height: auto; border-right: 0; border-bottom: 1px solid var(--rule); }

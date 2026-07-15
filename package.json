@@ -2,7 +2,7 @@
   "name": "kudiflow",
   "version": "0.1.0",
   "private": true,
-  "description": "Policy-controlled procurement and FX agent for Celo",
+  "description": "Autonomous Celo procurement agent with editable merchant policies, x402 receipts, ERC-8004 identity, and tagged USDC settlement",
   "type": "module",
   "engines": {
     "node": ">=20"

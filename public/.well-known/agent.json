@@ -1,7 +1,7 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "KudiFlow",
-  "description": "Policy-controlled procurement agent on Celo. KudiFlow pays for x402 stock, delivery, and risk signals, enforces merchant spend policy, and settles verified suppliers with tagged USDC receipts.",
+  "description": "Autonomous policy-controlled procurement agent on Celo. KudiFlow turns merchant buying briefs into governed actions, pays live x402 signal providers, shows Celo tx receipts, blocks unsafe policy violations, and settles verified suppliers with tagged USDC.",
   "image": "https://kudiflow-agent.vercel.app/assets/kudiflow-hero.png",
   "services": [
     {

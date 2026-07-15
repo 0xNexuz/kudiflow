@@ -102,21 +102,21 @@ export function createApp(config: RuntimeConfig = loadConfig()) {
     res.json({ supplier: "SunGrid", erc8004ReputationScore: 91, verified: true });
   });
 
-  app.post("/api/runs", async (_req, res) => {
+  app.post("/api/runs", async (req, res) => {
     const missing = missingLiveConfig(config);
     if (missing.length > 0) return res.status(409).json({ error: "live_config_missing", missing });
     try {
-      res.json(await runProcurementAgent(config));
+      res.json(await runProcurementAgent(config, req.body));
     } catch (error) {
       res.status(502).json({ error: "agent_run_failed", message: errorMessage(error) });
     }
   });
 
-  app.post("/api/settle", async (_req, res) => {
+  app.post("/api/settle", async (req, res) => {
     const missing = missingLiveConfig(config);
     if (missing.length > 0) return res.status(409).json({ error: "live_config_missing", missing });
     try {
-      res.json(await settleSupplier(config));
+      res.json(await settleSupplier(config, req.body?.policy));
     } catch (error) {
       res.status(502).json({ error: "settlement_failed", message: errorMessage(error) });
     }

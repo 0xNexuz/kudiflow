@@ -18,12 +18,33 @@ interface Receipt {
   proof?: unknown;
 }
 
+interface MerchantPolicyInput {
+  maxSignalSpendUsdc: string;
+  maxSettlementUsdc: string;
+  approvalThresholdUsdc: string;
+  minReputation: number;
+  requireVerifiedSupplier: boolean;
+  allowSignalProviders: boolean;
+}
+
+interface PolicyDecisionLog {
+  action: string;
+  status: "allow" | "approval-required" | "deny";
+  reason: string;
+  amount: string;
+  recipient: string;
+}
+
 interface RunResult {
-  status: "ready-for-approval";
+  status: "ready-for-approval" | "blocked";
+  merchantRequest: string;
   supplier: string;
   settlementAmountUsdc: string;
   budgetSavedNgn: string;
   receipts: Receipt[];
+  policyDecisions: PolicyDecisionLog[];
+  autonomousActions: string[];
+  blockReason?: string;
 }
 
 const stages = [
@@ -114,9 +135,31 @@ app.innerHTML = `
         <p class="demo-intro" id="readiness-copy">Checking live Celo and x402 readiness...</p>
 
         <div class="brief-slip">
-          <div><small>Merchant request</small><strong>"Restock 10 solar lamps under NGN 180,000 before Friday. Never pay an unverified supplier."</strong></div>
+          <div class="request-box">
+            <small>Merchant request</small>
+            <select id="request-preset" aria-label="Request preset">
+              <option value="solar">Restock solar lamps</option>
+              <option value="chargers">Emergency phone chargers</option>
+              <option value="rice">Compare rice wholesalers</option>
+              <option value="custom">Custom instruction</option>
+            </select>
+            <textarea id="merchant-request" rows="3">Restock 10 solar lamps under NGN 180,000 before Friday. Never pay an unverified supplier.</textarea>
+          </div>
           <div><small>Agent wallet</small><strong id="wallet-line">Loading...</strong></div>
           <button type="button" id="run-agent"><span>Begin</span><b>-></b></button>
+        </div>
+
+        <div class="policy-desk">
+          <div class="policy-head">
+            <small>Merchant policy</small>
+            <strong>Deterministic guardrails before the agent signs.</strong>
+          </div>
+          <label>Max x402 signal spend <input id="policy-max-signal" type="number" min="0" step="0.001" value="0.005" /></label>
+          <label>Max supplier settlement <input id="policy-max-settlement" type="number" min="0" step="0.001" value="0.01" /></label>
+          <label>Approval threshold <input id="policy-approval-threshold" type="number" min="0" step="0.001" value="0.005" /></label>
+          <label>Minimum trust score <input id="policy-min-reputation" type="number" min="0" max="100" step="1" value="80" /></label>
+          <label class="check-policy"><input id="policy-require-verified" type="checkbox" checked /> Require verified supplier</label>
+          <label class="check-policy"><input id="policy-allow-signals" type="checkbox" checked /> Allow paid signal providers</label>
         </div>
 
         <div class="agent-console">
@@ -132,6 +175,11 @@ app.innerHTML = `
             <div><span id="volume-metric">$0.00</span><small>Celo volume</small></div>
             <div><span id="saving-metric">NGN 0</span><small>budget saved</small></div>
           </div>
+        </div>
+
+        <div class="policy-ledger">
+          <div class="receipts-heading"><h3>Policy Ledger</h3><span>Allow / approve / block</span></div>
+          <div id="policy-list" class="policy-list"><p class="empty-receipt">Policy decisions will appear before any tx is sent.</p></div>
         </div>
 
         <div class="receipts-wrap">
@@ -204,14 +252,36 @@ function addReceipt(receipt: Receipt, tone = "data"): void {
   const list = document.querySelector<HTMLDivElement>("#receipt-list");
   if (!list) return;
   list.querySelector(".empty-receipt")?.remove();
-  const proof = receipt.transaction ?? shortProof(receipt.proof) ?? receipt.network;
+  const transaction = receipt.transaction ?? proofTransaction(receipt.proof);
+  const proof = transaction ?? shortProof(receipt.proof) ?? receipt.network;
+  const txLink = transaction
+    ? `<a class="tx-link" href="https://celoscan.io/tx/${escapeHtml(transaction)}" target="_blank" rel="noreferrer">View tx hash -></a>`
+    : `<small>${escapeHtml(proof)}</small>`;
   list.insertAdjacentHTML("beforeend", `
     <article class="receipt ${tone}">
       <span>${tone === "data" ? "402" : "OK"}</span>
-      <div><strong>${escapeHtml(receipt.name)}</strong><small>${escapeHtml(proof)}</small></div>
+      <div><strong>${escapeHtml(receipt.name)}</strong>${txLink}</div>
       <b>${escapeHtml(receipt.amount)}</b>
     </article>
   `);
+}
+
+function renderPolicyLedger(decisions: PolicyDecisionLog[]): void {
+  const list = document.querySelector<HTMLDivElement>("#policy-list");
+  if (!list) return;
+  if (decisions.length === 0) {
+    list.innerHTML = '<p class="empty-receipt">Policy decisions will appear before any tx is sent.</p>';
+    return;
+  }
+  list.innerHTML = decisions.map((decision) => `
+    <article class="policy-row ${decision.status}">
+      <span>${decision.status.toUpperCase()}</span>
+      <div>
+        <strong>${escapeHtml(decision.action)} · ${escapeHtml(decision.amount)}</strong>
+        <small>${escapeHtml(decision.reason)} · ${shortAddress(decision.recipient)}</small>
+      </div>
+    </article>
+  `).join("");
 }
 
 async function loadReadiness(): Promise<void> {
@@ -238,6 +308,7 @@ async function loadReadiness(): Promise<void> {
 async function runAgent(): Promise<void> {
   if (running || awaitingApproval || !lastConfig?.live) return;
   running = true;
+  renderPolicyLedger([]);
   setText("#console-state", "AGENT RUNNING");
   setStage("policy", "active");
   setStage("policy", "done");
@@ -245,12 +316,25 @@ async function runAgent(): Promise<void> {
   setStage("discover", "done");
   setStage("signals", "active");
   try {
-    const response = await fetch("/api/runs", { method: "POST" });
+    const payload = buildAgentPayload();
+    const response = await fetch("/api/runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
     if (!response.ok) throw await apiError(response);
     lastRun = await response.json() as RunResult;
+    renderPolicyLedger(lastRun.policyDecisions ?? []);
     for (const receipt of lastRun.receipts) addReceipt(receipt);
     setText("#count-metric", String(lastRun.receipts.length));
     setStage("signals", "done");
+    if (lastRun.status === "blocked") {
+      setStage("decide", "blocked");
+      setStage("settle", "blocked");
+      setText("#console-state", "POLICY BLOCKED");
+      setText("#readiness-copy", lastRun.blockReason ?? "The policy blocked this run before settlement.");
+      return;
+    }
     setStage("decide", "done");
     setStage("settle", "approval");
     setText("#saving-metric", `NGN ${Number(lastRun.budgetSavedNgn).toLocaleString()}`);
@@ -276,7 +360,11 @@ async function approvePayment(): Promise<void> {
   setStage("settle", "active");
   setText("#console-state", "SETTLING ON CELO");
   try {
-    const response = await fetch("/api/settle", { method: "POST" });
+    const response = await fetch("/api/settle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ policy: readPolicyInput() }),
+    });
     if (!response.ok) throw await apiError(response);
     const receipt = await response.json() as Receipt;
     addReceipt(receipt, "settlement");
@@ -303,6 +391,7 @@ function resetDemo(): void {
   setText("#saving-metric", "NGN 0");
   const list = document.querySelector<HTMLDivElement>("#receipt-list");
   if (list) list.innerHTML = '<p class="empty-receipt">Real receipts will appear here after paid x402 calls settle.</p>';
+  renderPolicyLedger([]);
   const slip = document.querySelector<HTMLDivElement>("#approval-slip");
   if (slip) slip.hidden = true;
   void loadReadiness();
@@ -310,6 +399,29 @@ function resetDemo(): void {
 
 function jumpToDemo(): void {
   document.querySelector("#demo")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function buildAgentPayload(): { merchantRequest: string; policy: MerchantPolicyInput } {
+  const request = document.querySelector<HTMLTextAreaElement>("#merchant-request")?.value.trim();
+  return {
+    merchantRequest: request || "Restock 10 solar lamps under NGN 180,000 before Friday. Never pay an unverified supplier.",
+    policy: readPolicyInput(),
+  };
+}
+
+function readPolicyInput(): MerchantPolicyInput {
+  return {
+    maxSignalSpendUsdc: inputValue("#policy-max-signal", "0.005"),
+    maxSettlementUsdc: inputValue("#policy-max-settlement", "0.01"),
+    approvalThresholdUsdc: inputValue("#policy-approval-threshold", "0.005"),
+    minReputation: Number(inputValue("#policy-min-reputation", "80")),
+    requireVerifiedSupplier: document.querySelector<HTMLInputElement>("#policy-require-verified")?.checked ?? true,
+    allowSignalProviders: document.querySelector<HTMLInputElement>("#policy-allow-signals")?.checked ?? true,
+  };
+}
+
+function inputValue(selector: string, fallback: string): string {
+  return document.querySelector<HTMLInputElement>(selector)?.value || fallback;
 }
 
 async function apiError(response: Response): Promise<Error> {
@@ -323,6 +435,33 @@ function shortProof(value: unknown): string | undefined {
   return text.length > 96 ? `${text.slice(0, 96)}...` : text;
 }
 
+function proofTransaction(value: unknown): string | undefined {
+  if (
+    value &&
+    typeof value === "object" &&
+    "transaction" in value &&
+    typeof value.transaction === "string"
+  ) {
+    return value.transaction;
+  }
+  return undefined;
+}
+
+function shortAddress(value: string): string {
+  return value.length > 12 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
+}
+
+function setPreset(value: string): void {
+  const textarea = document.querySelector<HTMLTextAreaElement>("#merchant-request");
+  if (!textarea || value === "custom") return;
+  const requests: Record<string, string> = {
+    solar: "Restock 10 solar lamps under NGN 180,000 before Friday. Never pay an unverified supplier.",
+    chargers: "Find 25 phone chargers for weekend sales. Prefer verified suppliers, cheapest landed cost, and block any signal spend above $0.005.",
+    rice: "Compare rice wholesalers for a 5-bag order. Only continue if supplier reputation is at least 90 and settlement stays under $0.01.",
+  };
+  textarea.value = requests[value] ?? textarea.value;
+}
+
 function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
@@ -330,6 +469,9 @@ function escapeHtml(value: string): string {
 document.querySelector("#run-agent")?.addEventListener("click", () => void runAgent());
 document.querySelector("#approve-payment")?.addEventListener("click", () => void approvePayment());
 document.querySelector("#reset-demo")?.addEventListener("click", resetDemo);
+document.querySelector("#request-preset")?.addEventListener("change", (event) => {
+  setPreset((event.target as HTMLSelectElement).value);
+});
 document.querySelectorAll<HTMLButtonElement>(".start-demo").forEach((button) => button.addEventListener("click", jumpToDemo));
 
 renderStages();
