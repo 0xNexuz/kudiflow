@@ -141,7 +141,17 @@ function proofTransaction(proof: unknown): Hash | undefined {
 
 async function responseDetail(response: Response): Promise<string> {
   const text = await response.text().catch(() => "");
-  return text ? `: ${text.slice(0, 500)}` : "";
+  const paymentHeader = response.headers.get("PAYMENT-RESPONSE");
+  let paymentFailure = "";
+  if (paymentHeader) {
+    try {
+      paymentFailure = JSON.stringify(decodePaymentResponseHeader(paymentHeader));
+    } catch {
+      paymentFailure = "unreadable PAYMENT-RESPONSE";
+    }
+  }
+  const details = [text && text !== "{}" ? text.slice(0, 500) : "", paymentFailure].filter(Boolean);
+  return details.length > 0 ? `: ${details.join(" | ")}` : "";
 }
 
 export async function buySignal(

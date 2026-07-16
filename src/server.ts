@@ -48,6 +48,15 @@ export function createApp(config: RuntimeConfig = loadConfig()) {
           },
         },
         description: `KudiFlow ${name} procurement signal`,
+        settlementFailedResponseBody: async (_request, failure) => ({
+          contentType: "application/json",
+          body: {
+            error: "x402_settlement_failed",
+            reason: failure.errorReason,
+            message: failure.errorMessage,
+            network: failure.network,
+          },
+        }),
       };
     }
   }

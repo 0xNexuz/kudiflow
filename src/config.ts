@@ -38,7 +38,7 @@ const envSchema = z.object({
   X402_STOCK_SERVICE_URL: urlString.optional(),
   X402_DELIVERY_SERVICE_URL: urlString.optional(),
   X402_RISK_SERVICE_URL: urlString.optional(),
-  X402_STOCK_PRICE_USDC: usdcPrice.default("0.0009"),
+  X402_STOCK_PRICE_USDC: usdcPrice.default("0.001"),
   X402_DELIVERY_PRICE_USDC: usdcPrice.default("0.002"),
   X402_RISK_PRICE_USDC: usdcPrice.default("0.004"),
   X402_STOCK_PAYTO: address.optional(),
