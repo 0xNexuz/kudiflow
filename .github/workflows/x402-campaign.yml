@@ -1,0 +1,82 @@
+name: KudiFlow x402 Campaign
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Successful x402 payments to attempt
+        required: true
+        default: "673"
+      max_usdc:
+        description: Hard nominal USDC authorization cap
+        required: true
+        default: "0.673"
+      delay_ms:
+        description: Delay between successful payments in milliseconds
+        required: true
+        default: "10000"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kudiflow-x402-campaign
+  cancel-in-progress: false
+
+jobs:
+  campaign:
+    name: Run paced x402 settlements
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    environment: kudiflow-campaign
+    env:
+      CELO_NETWORK: celo-mainnet
+      AGENT_PRIVATE_KEY: ${{ secrets.KUDIFLOW_AGENT_PRIVATE_KEY }}
+      AGENT_WALLET_ADDRESS: ${{ secrets.KUDIFLOW_AGENT_WALLET_ADDRESS }}
+      CELO_BUILDERS_ATTRIBUTION_TAG: ${{ secrets.KUDIFLOW_ATTRIBUTION_TAG }}
+      X402_FACILITATOR_URL: ${{ secrets.KUDIFLOW_X402_FACILITATOR_URL }}
+      X402_API_KEY: ${{ secrets.KUDIFLOW_X402_API_KEY }}
+      X402_STOCK_SERVICE_URL: https://kudiflow-agent.vercel.app/api/signals/stock
+      X402_DELIVERY_SERVICE_URL: https://kudiflow-agent.vercel.app/api/signals/delivery
+      X402_RISK_SERVICE_URL: https://kudiflow-agent.vercel.app/api/signals/risk
+      X402_STOCK_PAYTO: ${{ secrets.KUDIFLOW_STOCK_PAYTO }}
+      X402_DELIVERY_PAYTO: ${{ secrets.KUDIFLOW_DELIVERY_PAYTO }}
+      X402_RISK_PAYTO: ${{ secrets.KUDIFLOW_RISK_PAYTO }}
+      SUPPLIER_ADDRESS: ${{ secrets.KUDIFLOW_SUPPLIER_ADDRESS }}
+      KUDIFLOW_FEE_RECIPIENT: ${{ secrets.KUDIFLOW_FEE_RECIPIENT }}
+      CAMPAIGN_RUNS: ${{ inputs.runs }}
+      CAMPAIGN_MAX_USDC: ${{ inputs.max_usdc }}
+      CAMPAIGN_DELAY_MS: ${{ inputs.delay_ms }}
+
+    steps:
+      - name: Check out KudiFlow
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate campaign code
+        run: npm run typecheck
+
+      - name: Execute real paced x402 payments
+        run: >-
+          npm run campaign:x402 --
+          --runs "$CAMPAIGN_RUNS"
+          --max-usdc "$CAMPAIGN_MAX_USDC"
+          --delay-ms "$CAMPAIGN_DELAY_MS"
+          --execute
+
+      - name: Upload campaign receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: x402-campaign-${{ github.run_id }}-${{ github.run_attempt }}
+          path: work/*.jsonl
+          if-no-files-found: warn
+          retention-days: 30
